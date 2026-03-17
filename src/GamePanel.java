@@ -26,6 +26,7 @@ import javax.swing.BorderFactory;
 import javax.swing.ButtonModel;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
@@ -40,17 +41,28 @@ public final class GamePanel extends JPanel {
     private static final Color TEXT_COLOR = new Color(233, 240, 255);
     private static final Color ZERO_TILE_TEXT_COLOR = new Color(110, 128, 160);
     private static final Color BUTTON_COLOR = new Color(38, 64, 109);
-    private static final Color BUTTON_HOVER_COLOR = new Color(58, 89, 140);
-    private static final Color BUTTON_PRESSED_COLOR = new Color(27, 48, 86);
-    private static final Color BUTTON_FOCUS_BORDER_COLOR = new Color(129, 173, 255);
-    private static final Icon BOMB_ICON = loadSvgIcon("bomb.svg", 18, 18, new Color(250, 252, 255));
-    private static final Icon FLAG_ICON = loadSvgIcon("flag.svg", 18, 18, new Color(255, 98, 98));
+    private static final Color HUD_PANEL_COLOR = new Color(28, 45, 78);
+    private static final String TILE_STATE_KEY = "tileState";
+    private static final String TILE_ENABLED_KEY = "tileEnabled";
+    private static final String TILE_ADJACENT_KEY = "tileAdjacent";
+    private static final String TILE_DETONATED_KEY = "tileDetonated";
+    private static final Icon BOMB_ICON_DARK = loadSvgIcon("bomb.svg", 18, 18, new Color(255, 255, 255));
+    private static final Icon BOMB_ICON_LIGHT = loadSvgIcon("bomb.svg", 18, 18, new Color(14, 56, 125));
+    private static final Icon FLAG_ICON_DARK = loadSvgIcon("flag.svg", 18, 18, new Color(255, 78, 102));
+    private static final Icon FLAG_ICON_LIGHT = loadSvgIcon("flag.svg", 18, 18, new Color(216, 33, 70));
 
     private final JButton backButton;
+    private final JButton restartButton;
+    private final JLabel titleLabel;
+    private final JLabel statusLabel;
+    private final JLabel flagCountLabel;
+    private final JLabel timerLabel;
+    private final JPanel hudPanel;
     private final SquareBoardHost boardHost;
     private final JPanel boardSurface;
     private JButton[][] tileButtons;
     private Font tileBaseFont;
+    private ThemeMode themeMode = ThemeMode.DARK;
 
     public GamePanel() {
         setLayout(new java.awt.BorderLayout(18, 18));
@@ -71,7 +83,52 @@ public final class GamePanel extends JPanel {
         backButton.setIconTextGap(10);
         backButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
+        restartButton = new ModernBackButton("Restart");
+        restartButton.setFont(new Font("Dialog", Font.BOLD, 16));
+        restartButton.setForeground(TEXT_COLOR);
+        restartButton.setBackground(BUTTON_COLOR);
+        restartButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        JPanel centerInfoPanel = new JPanel(new java.awt.GridLayout(2, 1, 0, 2));
+        centerInfoPanel.setOpaque(false);
+
+        titleLabel = new JLabel("Minesweeper", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Dialog", Font.BOLD, 22));
+        titleLabel.setForeground(TEXT_COLOR);
+
+        statusLabel = new JLabel("", SwingConstants.CENTER);
+        statusLabel.setFont(new Font("Dialog", Font.PLAIN, 15));
+        statusLabel.setForeground(new Color(198, 214, 245));
+
+        centerInfoPanel.add(titleLabel);
+        centerInfoPanel.add(statusLabel);
+
+        hudPanel = new JPanel(new java.awt.GridLayout(2, 1, 0, 4));
+        hudPanel.setOpaque(true);
+        hudPanel.setBackground(HUD_PANEL_COLOR);
+        hudPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(84, 114, 166), 1),
+            BorderFactory.createEmptyBorder(8, 14, 8, 14)));
+
+        flagCountLabel = new JLabel("Flags left: 10", SwingConstants.RIGHT);
+        flagCountLabel.setFont(new Font("Dialog", Font.BOLD, 14));
+        flagCountLabel.setForeground(new Color(244, 245, 255));
+
+        timerLabel = new JLabel("Time: 00:00", SwingConstants.RIGHT);
+        timerLabel.setFont(new Font("Dialog", Font.BOLD, 14));
+        timerLabel.setForeground(new Color(244, 245, 255));
+
+        hudPanel.add(flagCountLabel);
+        hudPanel.add(timerLabel);
+
+        JPanel rightControlsPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
+        rightControlsPanel.setOpaque(false);
+        rightControlsPanel.add(restartButton);
+        rightControlsPanel.add(hudPanel);
+
         topBar.add(backButton, java.awt.BorderLayout.WEST);
+        topBar.add(centerInfoPanel, java.awt.BorderLayout.CENTER);
+        topBar.add(rightControlsPanel, java.awt.BorderLayout.EAST);
 
         boardHost = new SquareBoardHost();
         boardHost.setOpaque(false);
@@ -94,7 +151,9 @@ public final class GamePanel extends JPanel {
 
         Graphics2D g2d = (Graphics2D) graphics.create();
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2d.setPaint(new GradientPaint(0, 0, PANEL_TOP_COLOR, 0, getHeight(), PANEL_BOTTOM_COLOR));
+        Color topColor = themeMode == ThemeMode.DARK ? PANEL_TOP_COLOR : new Color(232, 241, 255);
+        Color bottomColor = themeMode == ThemeMode.DARK ? PANEL_BOTTOM_COLOR : new Color(209, 224, 247);
+        g2d.setPaint(new GradientPaint(0, 0, topColor, 0, getHeight(), bottomColor));
         g2d.fillRect(0, 0, getWidth(), getHeight());
         g2d.dispose();
     }
@@ -103,12 +162,68 @@ public final class GamePanel extends JPanel {
         return backButton;
     }
 
+    public JButton getRestartButton() {
+        return restartButton;
+    }
+
+    public void setThemeMode(ThemeMode themeMode) {
+        this.themeMode = themeMode;
+
+        if (themeMode == ThemeMode.DARK) {
+            titleLabel.setForeground(TEXT_COLOR);
+            statusLabel.setForeground(new Color(198, 214, 245));
+            Color hudTextColor = new Color(244, 245, 255);
+            flagCountLabel.setForeground(hudTextColor);
+            timerLabel.setForeground(hudTextColor);
+            backButton.setForeground(TEXT_COLOR);
+            backButton.setBackground(BUTTON_COLOR);
+            backButton.setIcon(new ArrowLeftIcon(TEXT_COLOR));
+            restartButton.setForeground(TEXT_COLOR);
+            restartButton.setBackground(BUTTON_COLOR);
+        } else {
+            Color lightText = new Color(20, 44, 92);
+            Color lightButtonColor = new Color(185, 208, 242);
+            titleLabel.setForeground(lightText);
+            statusLabel.setForeground(new Color(43, 79, 148));
+            flagCountLabel.setForeground(lightText);
+            timerLabel.setForeground(lightText);
+            backButton.setForeground(lightText);
+            backButton.setBackground(lightButtonColor);
+            backButton.setIcon(new ArrowLeftIcon(lightText));
+            restartButton.setForeground(lightText);
+            restartButton.setBackground(lightButtonColor);
+        }
+
+        boardSurface.setBackground(getBoardSurfaceColor());
+        boardSurface.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(getBoardFrameColor(), 2),
+                BorderFactory.createEmptyBorder(14, 14, 14, 14)));
+        hudPanel.setBackground(getHudBackgroundColor());
+        hudPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(getHudFrameColor(), 1),
+                BorderFactory.createEmptyBorder(8, 14, 8, 14)));
+        reapplyTileTheme();
+
+        repaint();
+    }
+
     public void setTitleText(String title) {
-        // Intentionally no-op: top text has been removed.
+        titleLabel.setText(title);
     }
 
     public void setStatusText(String status) {
-        // Intentionally no-op: top text has been removed.
+        statusLabel.setText(status);
+    }
+
+    public void setRemainingFlagCount(int remainingFlagCount) {
+        int clampedCount = Math.max(0, remainingFlagCount);
+        flagCountLabel.setText(String.format("Flags left: %02d", clampedCount));
+    }
+
+    public void setElapsedTimeSeconds(int elapsedSeconds) {
+        int minutes = elapsedSeconds / 60;
+        int seconds = elapsedSeconds % 60;
+        timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
     }
 
     public void buildBoard(int rowCount, int columnCount, ActionListener tileListener, MouseAdapter tileMouseListener) {
@@ -156,49 +271,29 @@ public final class GamePanel extends JPanel {
 
     public void setTileHidden(int row, int column, boolean enabled) {
         JButton tileButton = tileButtons[row][column];
-        tileButton.setText("");
-        tileButton.setIcon(null);
-        tileButton.setEnabled(enabled);
-        tileButton.setFont(tileBaseFont);
-        tileButton.setForeground(TEXT_COLOR);
-        tileButton.setBackground(HIDDEN_TILE_COLOR);
-        tileButton.setBorder(BorderFactory.createLineBorder(TILE_BORDER_COLOR, 1));
+        styleTileHidden(tileButton, enabled);
+        tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.HIDDEN);
+        tileButton.putClientProperty(TILE_ENABLED_KEY, enabled);
     }
 
     public void setTileFlagged(int row, int column) {
         JButton tileButton = tileButtons[row][column];
-        tileButton.setText(FLAG_ICON == null ? "F" : "");
-        tileButton.setIcon(FLAG_ICON);
-        tileButton.setEnabled(true);
-        tileButton.setFont(tileBaseFont);
-        tileButton.setForeground(new Color(255, 236, 236));
-        tileButton.setBackground(new Color(52, 77, 122));
-        tileButton.setBorder(BorderFactory.createLineBorder(new Color(124, 151, 205), 1));
+        styleTileFlagged(tileButton);
+        tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.FLAGGED);
     }
 
     public void setTileRevealed(int row, int column, int adjacentMineCount) {
         JButton tileButton = tileButtons[row][column];
-        Color numberColor = getNumberColor(adjacentMineCount);
-        tileButton.setText(adjacentMineCount == 0 ? "" : Integer.toString(adjacentMineCount));
-        tileButton.setIcon(null);
-        tileButton.setEnabled(true);
-        tileButton.setForeground(numberColor);
-        tileButton.setBackground(REVEALED_TILE_COLOR);
-        tileButton.setBorder(BorderFactory.createLineBorder(new Color(188, 201, 224), 1));
-
-        int emphasizedSize = Math.max(tileBaseFont.getSize() + 2, 16);
-        tileButton.setFont(tileBaseFont.deriveFont(Font.BOLD, emphasizedSize));
+        styleTileRevealed(tileButton, adjacentMineCount);
+        tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.REVEALED);
+        tileButton.putClientProperty(TILE_ADJACENT_KEY, adjacentMineCount);
     }
 
     public void setTileMine(int row, int column, boolean detonated) {
         JButton tileButton = tileButtons[row][column];
-        tileButton.setText(BOMB_ICON == null ? "*" : "");
-        tileButton.setIcon(BOMB_ICON);
-        tileButton.setEnabled(true);
-        tileButton.setFont(tileBaseFont);
-        tileButton.setForeground(Color.WHITE);
-        tileButton.setBackground(detonated ? MINE_TILE_COLOR : new Color(142, 40, 40));
-        tileButton.setBorder(BorderFactory.createLineBorder(new Color(115, 28, 28), 1));
+        styleTileMine(tileButton, detonated);
+        tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.MINE);
+        tileButton.putClientProperty(TILE_DETONATED_KEY, detonated);
     }
 
     public void requestBoardFocus() {
@@ -233,17 +328,138 @@ public final class GamePanel extends JPanel {
     }
 
     private Color getNumberColor(int adjacentMineCount) {
+        if (themeMode == ThemeMode.DARK) {
+            return switch (adjacentMineCount) {
+                case 1 -> new Color(66, 128, 235);
+                case 2 -> new Color(34, 186, 106);
+                case 3 -> new Color(233, 78, 62);
+                case 4 -> new Color(145, 86, 236);
+                case 5 -> new Color(212, 116, 62);
+                case 6 -> new Color(32, 185, 202);
+                case 7 -> new Color(60, 72, 95);
+                case 8 -> new Color(116, 128, 148);
+                default -> new Color(144, 162, 196);
+            };
+        }
+
         return switch (adjacentMineCount) {
-            case 1 -> new Color(39, 93, 189);
-            case 2 -> new Color(32, 138, 84);
-            case 3 -> new Color(200, 56, 46);
-            case 4 -> new Color(104, 57, 171);
-            case 5 -> new Color(158, 76, 44);
-            case 6 -> new Color(26, 139, 148);
-            case 7 -> new Color(35, 44, 59);
-            case 8 -> new Color(88, 96, 110);
-            default -> ZERO_TILE_TEXT_COLOR;
+            case 1 -> new Color(35, 102, 212);
+            case 2 -> new Color(22, 156, 88);
+            case 3 -> new Color(215, 64, 55);
+            case 4 -> new Color(112, 70, 191);
+            case 5 -> new Color(176, 92, 53);
+            case 6 -> new Color(21, 156, 170);
+            case 7 -> new Color(56, 72, 102);
+            case 8 -> new Color(88, 106, 134);
+            default -> new Color(96, 118, 150);
         };
+    }
+
+    private void reapplyTileTheme() {
+        if (tileButtons == null) {
+            return;
+        }
+
+        for (JButton[] tileRow : tileButtons) {
+            for (JButton tileButton : tileRow) {
+                Object state = tileButton.getClientProperty(TILE_STATE_KEY);
+                if (!(state instanceof TileVisualState tileVisualState)) {
+                    continue;
+                }
+
+                switch (tileVisualState) {
+                    case HIDDEN -> {
+                        boolean enabled = Boolean.TRUE.equals(tileButton.getClientProperty(TILE_ENABLED_KEY));
+                        styleTileHidden(tileButton, enabled);
+                    }
+                    case FLAGGED -> styleTileFlagged(tileButton);
+                    case REVEALED -> {
+                        Object adjacentValue = tileButton.getClientProperty(TILE_ADJACENT_KEY);
+                        int adjacentMineCount = adjacentValue instanceof Integer ? (Integer) adjacentValue : 0;
+                        styleTileRevealed(tileButton, adjacentMineCount);
+                    }
+                    case MINE -> {
+                        boolean detonated = Boolean.TRUE.equals(tileButton.getClientProperty(TILE_DETONATED_KEY));
+                        styleTileMine(tileButton, detonated);
+                    }
+                }
+            }
+        }
+    }
+
+    private void styleTileHidden(JButton tileButton, boolean enabled) {
+        tileButton.setText("");
+        tileButton.setIcon(null);
+        tileButton.setEnabled(enabled);
+        tileButton.setFont(tileBaseFont);
+        tileButton.setForeground(themeMode == ThemeMode.DARK ? TEXT_COLOR : new Color(18, 49, 107));
+        tileButton.setBackground(themeMode == ThemeMode.DARK ? HIDDEN_TILE_COLOR : new Color(137, 181, 238));
+        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? TILE_BORDER_COLOR : new Color(82, 135, 207), 1));
+    }
+
+    private void styleTileFlagged(JButton tileButton) {
+        Icon flagIcon = getFlagIconForTheme();
+        tileButton.setText(flagIcon == null ? "F" : "");
+        tileButton.setIcon(flagIcon);
+        tileButton.setEnabled(true);
+        tileButton.setFont(tileBaseFont);
+        tileButton.setForeground(themeMode == ThemeMode.DARK ? new Color(255, 236, 236) : new Color(170, 34, 56));
+        tileButton.setBackground(themeMode == ThemeMode.DARK ? new Color(52, 77, 122) : new Color(170, 201, 242));
+        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? new Color(124, 151, 205) : new Color(97, 143, 212), 1));
+    }
+
+    private void styleTileRevealed(JButton tileButton, int adjacentMineCount) {
+        Color numberColor = getNumberColor(adjacentMineCount);
+        tileButton.setText(adjacentMineCount == 0 ? "" : Integer.toString(adjacentMineCount));
+        tileButton.setIcon(null);
+        tileButton.setEnabled(true);
+        tileButton.setForeground(numberColor);
+        tileButton.setBackground(themeMode == ThemeMode.DARK ? REVEALED_TILE_COLOR : new Color(230, 241, 255));
+        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? new Color(188, 201, 224) : new Color(140, 179, 231), 1));
+
+        int emphasizedSize = Math.max(tileBaseFont.getSize() + 2, 16);
+        tileButton.setFont(tileBaseFont.deriveFont(Font.BOLD, emphasizedSize));
+    }
+
+    private void styleTileMine(JButton tileButton, boolean detonated) {
+        Icon bombIcon = getBombIconForTheme();
+        tileButton.setText(bombIcon == null ? "*" : "");
+        tileButton.setIcon(bombIcon);
+        tileButton.setEnabled(true);
+        tileButton.setFont(tileBaseFont);
+        tileButton.setForeground(Color.WHITE);
+
+        if (themeMode == ThemeMode.DARK) {
+            tileButton.setBackground(detonated ? MINE_TILE_COLOR : new Color(142, 40, 40));
+            tileButton.setBorder(BorderFactory.createLineBorder(new Color(115, 28, 28), 1));
+        } else {
+            tileButton.setBackground(detonated ? new Color(212, 93, 93) : new Color(190, 106, 106));
+            tileButton.setBorder(BorderFactory.createLineBorder(new Color(156, 79, 79), 1));
+        }
+    }
+
+    private Color getBoardSurfaceColor() {
+        return themeMode == ThemeMode.DARK ? BOARD_SURFACE_COLOR : new Color(174, 206, 245);
+    }
+
+    private Color getBoardFrameColor() {
+        return themeMode == ThemeMode.DARK ? new Color(90, 119, 171) : new Color(95, 142, 205);
+    }
+
+    private Color getHudBackgroundColor() {
+        return themeMode == ThemeMode.DARK ? HUD_PANEL_COLOR : new Color(186, 214, 248);
+    }
+
+    private Color getHudFrameColor() {
+        return themeMode == ThemeMode.DARK ? new Color(84, 114, 166) : new Color(89, 140, 207);
+    }
+
+    private Icon getFlagIconForTheme() {
+        return themeMode == ThemeMode.DARK ? FLAG_ICON_DARK : FLAG_ICON_LIGHT;
+    }
+
+    private Icon getBombIconForTheme() {
+        return themeMode == ThemeMode.DARK ? BOMB_ICON_DARK : BOMB_ICON_LIGHT;
     }
 
     private static Icon loadSvgIcon(String assetFileName, int iconWidth, int iconHeight, Color color) {
@@ -326,18 +542,18 @@ public final class GamePanel extends JPanel {
             Graphics2D g2d = (Graphics2D) graphics.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            Color baseColor = BUTTON_COLOR;
+            Color baseColor = getBackground();
             if (pressed) {
-                baseColor = BUTTON_PRESSED_COLOR;
+                baseColor = shiftColor(baseColor, -28);
             } else if (hovered) {
-                baseColor = BUTTON_HOVER_COLOR;
+                baseColor = shiftColor(baseColor, 18);
             }
 
             g2d.setColor(baseColor);
             g2d.fillRoundRect(0, yOffset, getWidth() - 1, getHeight() - 1 - yOffset, ARC_SIZE, ARC_SIZE);
 
             if (focused) {
-                g2d.setColor(BUTTON_FOCUS_BORDER_COLOR);
+                g2d.setColor(shiftColor(getForeground(), 36));
                 g2d.drawRoundRect(1, 1 + yOffset, getWidth() - 3, getHeight() - 3 - yOffset, ARC_SIZE, ARC_SIZE);
             }
 
@@ -350,6 +566,20 @@ public final class GamePanel extends JPanel {
             super.paintComponent(textGraphics);
             textGraphics.dispose();
         }
+
+        private static Color shiftColor(Color color, int shift) {
+            int red = Math.max(0, Math.min(255, color.getRed() + shift));
+            int green = Math.max(0, Math.min(255, color.getGreen() + shift));
+            int blue = Math.max(0, Math.min(255, color.getBlue() + shift));
+            return new Color(red, green, blue);
+        }
+    }
+
+    private enum TileVisualState {
+        HIDDEN,
+        FLAGGED,
+        REVEALED,
+        MINE
     }
 
     private static final class ArrowLeftIcon implements Icon {

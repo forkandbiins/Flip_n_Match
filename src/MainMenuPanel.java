@@ -43,9 +43,6 @@ public final class MainMenuPanel extends JPanel {
     private static final Color SUBTITLE_COLOR = new Color(176, 193, 233);
     private static final Color BUTTON_TEXT_COLOR = new Color(233, 240, 255);
     private static final Color BUTTON_COLOR = new Color(38, 64, 109);
-    private static final Color BUTTON_HOVER_COLOR = new Color(58, 89, 140);
-    private static final Color BUTTON_PRESSED_COLOR = new Color(27, 48, 86);
-    private static final Color BUTTON_FOCUS_BORDER_COLOR = new Color(129, 173, 255);
 
     private final JButton playButton;
     private final JButton settingsButton;
@@ -56,6 +53,7 @@ public final class MainMenuPanel extends JPanel {
     private final Filler subtitleGapFiller;
     private final Filler firstButtonGapFiller;
     private final Filler secondButtonGapFiller;
+    private ThemeMode themeMode = ThemeMode.DARK;
 
     public MainMenuPanel(String title) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -98,6 +96,34 @@ public final class MainMenuPanel extends JPanel {
         });
 
         SwingUtilities.invokeLater(() -> applyResponsiveSizing(getSize()));
+    }
+
+    public void setThemeMode(ThemeMode themeMode) {
+        this.themeMode = themeMode;
+
+        if (themeMode == ThemeMode.DARK) {
+            titleLabel.setForeground(TITLE_COLOR);
+            subtitleLabel.setForeground(SUBTITLE_COLOR);
+            playButton.setForeground(BUTTON_TEXT_COLOR);
+            settingsButton.setForeground(BUTTON_TEXT_COLOR);
+            exitButton.setForeground(BUTTON_TEXT_COLOR);
+            applyButtonPalette(playButton, BUTTON_COLOR);
+            applyButtonPalette(settingsButton, BUTTON_COLOR);
+            applyButtonPalette(exitButton, BUTTON_COLOR);
+        } else {
+            titleLabel.setForeground(new Color(22, 48, 100));
+            subtitleLabel.setForeground(new Color(60, 98, 168));
+            Color lightButtonText = new Color(20, 44, 92);
+            playButton.setForeground(lightButtonText);
+            settingsButton.setForeground(lightButtonText);
+            exitButton.setForeground(lightButtonText);
+            Color lightButtonColor = new Color(185, 208, 242);
+            applyButtonPalette(playButton, lightButtonColor);
+            applyButtonPalette(settingsButton, lightButtonColor);
+            applyButtonPalette(exitButton, lightButtonColor);
+        }
+
+        repaint();
     }
 
     public JButton getPlayButton() {
@@ -176,9 +202,13 @@ public final class MainMenuPanel extends JPanel {
     private JButton createMenuButton(String label) {
         JButton button = new ModernMenuButton(label);
         button.setForeground(BUTTON_TEXT_COLOR);
-        button.setBackground(BUTTON_COLOR);
+        applyButtonPalette(button, BUTTON_COLOR);
         button.setAlignmentX(CENTER_ALIGNMENT);
         return button;
+    }
+
+    private void applyButtonPalette(JButton button, Color fillColor) {
+        button.setBackground(fillColor);
     }
 
     @Override
@@ -193,7 +223,9 @@ public final class MainMenuPanel extends JPanel {
                 0f,
                 getHeight(),
                 new float[] {0f, 1f},
-                new Color[] {new Color(16, 24, 44), new Color(9, 13, 26)});
+            themeMode == ThemeMode.DARK
+                ? new Color[] {new Color(16, 24, 44), new Color(9, 13, 26)}
+                : new Color[] {new Color(232, 241, 255), new Color(209, 224, 247)});
 
         g2d.setPaint(gradient);
         g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -250,11 +282,11 @@ public final class MainMenuPanel extends JPanel {
             Graphics2D g2d = (Graphics2D) graphics.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            Color baseColor = BUTTON_COLOR;
+            Color baseColor = getBackground();
             if (pressed) {
-                baseColor = BUTTON_PRESSED_COLOR;
+                baseColor = shiftColor(baseColor, -28);
             } else if (hovered) {
-                baseColor = BUTTON_HOVER_COLOR;
+                baseColor = shiftColor(baseColor, 18);
             }
 
             if (!isEnabled()) {
@@ -265,7 +297,7 @@ public final class MainMenuPanel extends JPanel {
             g2d.fillRoundRect(0, yOffset, getWidth() - 1, getHeight() - 1 - yOffset, ARC_SIZE, ARC_SIZE);
 
             if (focused) {
-                g2d.setColor(BUTTON_FOCUS_BORDER_COLOR);
+                g2d.setColor(shiftColor(getForeground(), 36));
                 g2d.drawRoundRect(1, 1 + yOffset, getWidth() - 3, getHeight() - 3 - yOffset, ARC_SIZE, ARC_SIZE);
             }
 
@@ -277,6 +309,13 @@ public final class MainMenuPanel extends JPanel {
             }
             super.paintComponent(textGraphics);
             textGraphics.dispose();
+        }
+
+        private static Color shiftColor(Color color, int shift) {
+            int red = Math.max(0, Math.min(255, color.getRed() + shift));
+            int green = Math.max(0, Math.min(255, color.getGreen() + shift));
+            int blue = Math.max(0, Math.min(255, color.getBlue() + shift));
+            return new Color(red, green, blue);
         }
     }
 }

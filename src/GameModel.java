@@ -2,6 +2,8 @@ import java.util.ArrayDeque;
 import java.util.Random;
 
 public final class GameModel {
+    private static final int FLAG_LIMIT = 10;
+
     public enum RevealResult {
         ALREADY_REVEALED,
         SAFE,
@@ -17,6 +19,7 @@ public final class GameModel {
     private final boolean[][] revealedGrid;
     private final boolean[][] flaggedGrid;
     private int revealedSafeTileCount;
+    private int flaggedTileCount;
     private boolean gameOver;
     private boolean won;
 
@@ -47,6 +50,10 @@ public final class GameModel {
 
     public int getColumnCount() {
         return columnCount;
+    }
+
+    public int getMineCount() {
+        return mineCount;
     }
 
     public boolean isMine(int row, int column) {
@@ -92,6 +99,10 @@ public final class GameModel {
         return safeTileCount - revealedSafeTileCount;
     }
 
+    public int getRemainingFlagCount() {
+        return FLAG_LIMIT - flaggedTileCount;
+    }
+
     public RevealResult revealTile(int row, int column) {
         if (!isInsideBoard(row, column) || revealedGrid[row][column] || flaggedGrid[row][column] || gameOver) {
             return RevealResult.ALREADY_REVEALED;
@@ -119,7 +130,13 @@ public final class GameModel {
             return flaggedGrid[row][column];
         }
 
-        flaggedGrid[row][column] = !flaggedGrid[row][column];
+        if (!flaggedGrid[row][column] && flaggedTileCount >= FLAG_LIMIT) {
+            return false;
+        }
+
+        boolean nowFlagged = !flaggedGrid[row][column];
+        flaggedGrid[row][column] = nowFlagged;
+        flaggedTileCount += nowFlagged ? 1 : -1;
         return flaggedGrid[row][column];
     }
 
@@ -148,8 +165,17 @@ public final class GameModel {
             int row = cell[0];
             int column = cell[1];
 
-            if (!isInsideBoard(row, column) || revealedGrid[row][column] || mineGrid[row][column]) {
+            if (!isInsideBoard(row, column)
+                    || revealedGrid[row][column]
+                    || mineGrid[row][column]) {
                 continue;
+            }
+
+            if (flaggedGrid[row][column]) {
+                flaggedGrid[row][column] = false;
+                if (flaggedTileCount > 0) {
+                    flaggedTileCount--;
+                }
             }
 
             revealedGrid[row][column] = true;

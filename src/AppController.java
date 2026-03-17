@@ -3,6 +3,8 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
 public final class AppController {
+    private ThemeMode themeMode = ThemeMode.DARK;
+
     public void start() {
         SwingUtilities.invokeLater(() -> {
             applySystemLookAndFeel();
@@ -33,11 +35,18 @@ public final class AppController {
                     mainFrame,
                     mainMenuController,
                     mainMenuPanel,
-                    settingsPanel);
+                    settingsPanel,
+                    () -> themeMode,
+                    nextThemeMode -> {
+                        themeMode = nextThemeMode;
+                        applyThemeToPanels(mainMenuPanel, difficultyPanel, gamePanel, settingsPanel);
+                    });
 
             difficultyControllerRef[0] = difficultyController;
             gameControllerRef[0] = gameController;
             settingsControllerRef[0] = settingsController;
+
+            applyThemeToPanels(mainMenuPanel, difficultyPanel, gamePanel, settingsPanel);
 
             mainMenuController.initialize();
             difficultyController.initialize();
@@ -45,6 +54,17 @@ public final class AppController {
             settingsController.initialize();
             mainFrame.showWindow();
         });
+    }
+
+    private void applyThemeToPanels(
+            MainMenuPanel mainMenuPanel,
+            DifficultyPanel difficultyPanel,
+            GamePanel gamePanel,
+            SettingsPanel settingsPanel) {
+        mainMenuPanel.setThemeMode(themeMode);
+        difficultyPanel.setThemeMode(themeMode);
+        gamePanel.setThemeMode(themeMode);
+        settingsPanel.setThemeMode(themeMode);
     }
 
     private void applySystemLookAndFeel() {

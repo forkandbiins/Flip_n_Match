@@ -40,9 +40,6 @@ public final class DifficultyPanel extends JPanel {
 
     private static final Color BUTTON_TEXT_COLOR = new Color(233, 240, 255);
     private static final Color BUTTON_COLOR = new Color(38, 64, 109);
-    private static final Color BUTTON_HOVER_COLOR = new Color(58, 89, 140);
-    private static final Color BUTTON_PRESSED_COLOR = new Color(27, 48, 86);
-    private static final Color BUTTON_FOCUS_BORDER_COLOR = new Color(129, 173, 255);
 
     private final JButton backButton;
     private final JLabel difficultyLabel;
@@ -52,6 +49,7 @@ public final class DifficultyPanel extends JPanel {
     private final Filler labelGapFiller;
     private final Filler firstButtonGapFiller;
     private final Filler secondButtonGapFiller;
+    private ThemeMode themeMode = ThemeMode.DARK;
 
     public DifficultyPanel() {
         setLayout(new BorderLayout());
@@ -110,6 +108,38 @@ public final class DifficultyPanel extends JPanel {
         });
 
         applyDifficultyButtonSizing(Toolkit.getDefaultToolkit().getScreenSize());
+    }
+
+    public void setThemeMode(ThemeMode themeMode) {
+        this.themeMode = themeMode;
+
+        if (themeMode == ThemeMode.DARK) {
+            difficultyLabel.setForeground(BUTTON_TEXT_COLOR);
+            backButton.setForeground(BUTTON_TEXT_COLOR);
+            backButton.setBackground(BUTTON_COLOR);
+            backButton.setIcon(new ArrowLeftIcon(BUTTON_TEXT_COLOR));
+            easyButton.setForeground(BUTTON_TEXT_COLOR);
+            mediumButton.setForeground(BUTTON_TEXT_COLOR);
+            hardButton.setForeground(BUTTON_TEXT_COLOR);
+            easyButton.setBackground(BUTTON_COLOR);
+            mediumButton.setBackground(BUTTON_COLOR);
+            hardButton.setBackground(BUTTON_COLOR);
+        } else {
+            Color lightText = new Color(20, 44, 92);
+            Color lightButtonColor = new Color(185, 208, 242);
+            difficultyLabel.setForeground(lightText);
+            backButton.setForeground(lightText);
+            backButton.setBackground(lightButtonColor);
+            backButton.setIcon(new ArrowLeftIcon(lightText));
+            easyButton.setForeground(lightText);
+            mediumButton.setForeground(lightText);
+            hardButton.setForeground(lightText);
+            easyButton.setBackground(lightButtonColor);
+            mediumButton.setBackground(lightButtonColor);
+            hardButton.setBackground(lightButtonColor);
+        }
+
+        repaint();
     }
 
     public JButton getBackButton() {
@@ -240,18 +270,18 @@ public final class DifficultyPanel extends JPanel {
             Graphics2D g2d = (Graphics2D) graphics.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            Color baseColor = BUTTON_COLOR;
+            Color baseColor = getBackground();
             if (pressed) {
-                baseColor = BUTTON_PRESSED_COLOR;
+                baseColor = shiftColor(baseColor, -28);
             } else if (hovered) {
-                baseColor = BUTTON_HOVER_COLOR;
+                baseColor = shiftColor(baseColor, 18);
             }
 
             g2d.setColor(baseColor);
             g2d.fillRoundRect(0, yOffset, getWidth() - 1, getHeight() - 1 - yOffset, ARC_SIZE, ARC_SIZE);
 
             if (focused) {
-                g2d.setColor(BUTTON_FOCUS_BORDER_COLOR);
+                g2d.setColor(shiftColor(getForeground(), 36));
                 g2d.drawRoundRect(1, 1 + yOffset, getWidth() - 3, getHeight() - 3 - yOffset, ARC_SIZE, ARC_SIZE);
             }
 
@@ -263,6 +293,13 @@ public final class DifficultyPanel extends JPanel {
             }
             super.paintComponent(textGraphics);
             textGraphics.dispose();
+        }
+
+        private static Color shiftColor(Color color, int shift) {
+            int red = Math.max(0, Math.min(255, color.getRed() + shift));
+            int green = Math.max(0, Math.min(255, color.getGreen() + shift));
+            int blue = Math.max(0, Math.min(255, color.getBlue() + shift));
+            return new Color(red, green, blue);
         }
     }
 
@@ -315,11 +352,11 @@ public final class DifficultyPanel extends JPanel {
             Graphics2D g2d = (Graphics2D) graphics.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            Color baseColor = BUTTON_COLOR;
+            Color baseColor = getBackground();
             if (pressed) {
-                baseColor = BUTTON_PRESSED_COLOR;
+                baseColor = shiftColor(baseColor, -28);
             } else if (hovered) {
-                baseColor = BUTTON_HOVER_COLOR;
+                baseColor = shiftColor(baseColor, 18);
             }
 
             if (!isEnabled()) {
@@ -330,7 +367,7 @@ public final class DifficultyPanel extends JPanel {
             g2d.fillRoundRect(0, yOffset, getWidth() - 1, getHeight() - 1 - yOffset, ARC_SIZE, ARC_SIZE);
 
             if (focused) {
-                g2d.setColor(BUTTON_FOCUS_BORDER_COLOR);
+                g2d.setColor(shiftColor(getForeground(), 36));
                 g2d.drawRoundRect(2, yOffset + 2, getWidth() - 5, getHeight() - 5 - yOffset, ARC_SIZE - 6, ARC_SIZE - 6);
             }
 
@@ -340,6 +377,13 @@ public final class DifficultyPanel extends JPanel {
             textGraphics.translate(0, yOffset);
             super.paintComponent(textGraphics);
             textGraphics.dispose();
+        }
+
+        private static Color shiftColor(Color color, int shift) {
+            int red = Math.max(0, Math.min(255, color.getRed() + shift));
+            int green = Math.max(0, Math.min(255, color.getGreen() + shift));
+            int blue = Math.max(0, Math.min(255, color.getBlue() + shift));
+            return new Color(red, green, blue);
         }
     }
 
@@ -355,7 +399,9 @@ public final class DifficultyPanel extends JPanel {
                 0f,
                 getHeight(),
                 new float[] {0f, 1f},
-                new Color[] {new Color(16, 24, 44), new Color(9, 13, 26)});
+            themeMode == ThemeMode.DARK
+                ? new Color[] {new Color(16, 24, 44), new Color(9, 13, 26)}
+                : new Color[] {new Color(232, 241, 255), new Color(209, 224, 247)});
 
         g2d.setPaint(gradient);
         g2d.fillRect(0, 0, getWidth(), getHeight());
