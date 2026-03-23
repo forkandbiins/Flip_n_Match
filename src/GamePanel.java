@@ -1,3 +1,4 @@
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -17,9 +18,14 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.BorderFactory;
@@ -42,14 +48,32 @@ public final class GamePanel extends JPanel {
     private static final Color ZERO_TILE_TEXT_COLOR = new Color(110, 128, 160);
     private static final Color BUTTON_COLOR = new Color(38, 64, 109);
     private static final Color HUD_PANEL_COLOR = new Color(28, 45, 78);
+    private static final Color LIGHT_PANEL_TOP_COLOR = new Color(247, 251, 255);
+    private static final Color LIGHT_PANEL_BOTTOM_COLOR = new Color(224, 237, 255);
+    private static final Color LIGHT_PRIMARY_TEXT = new Color(21, 49, 98);
+    private static final Color LIGHT_STATUS_TEXT = new Color(58, 96, 158);
+    private static final Color LIGHT_BUTTON_COLOR = new Color(204, 224, 250);
+    private static final Color LIGHT_BOARD_SURFACE_COLOR = new Color(197, 220, 248);
+    private static final Color LIGHT_BOARD_FRAME_COLOR = new Color(114, 154, 208);
+    private static final Color LIGHT_HUD_PANEL_COLOR = new Color(214, 231, 252);
+    private static final Color LIGHT_HUD_FRAME_COLOR = new Color(125, 162, 214);
+    private static final Color LIGHT_HIDDEN_TILE_COLOR = new Color(157, 193, 238);
+    private static final Color LIGHT_HIDDEN_TILE_BORDER_COLOR = new Color(99, 143, 205);
+    private static final Color LIGHT_FLAG_TILE_COLOR = new Color(186, 212, 246);
+    private static final Color LIGHT_FLAG_TILE_BORDER_COLOR = new Color(112, 154, 211);
+    private static final Color LIGHT_REVEALED_TILE_COLOR = new Color(243, 248, 255);
+    private static final Color LIGHT_REVEALED_TILE_BORDER_COLOR = new Color(163, 191, 226);
+    private static final Color LIGHT_MINE_TILE_COLOR = new Color(220, 112, 112);
+    private static final Color LIGHT_MINE_TILE_SAFE_COLOR = new Color(196, 128, 128);
+    private static final Color LIGHT_MINE_TILE_BORDER_COLOR = new Color(163, 98, 98);
     private static final String TILE_STATE_KEY = "tileState";
     private static final String TILE_ENABLED_KEY = "tileEnabled";
     private static final String TILE_ADJACENT_KEY = "tileAdjacent";
     private static final String TILE_DETONATED_KEY = "tileDetonated";
-    private static final Icon BOMB_ICON_DARK = loadSvgIcon("bomb.svg", 18, 18, new Color(255, 255, 255));
-    private static final Icon BOMB_ICON_LIGHT = loadSvgIcon("bomb.svg", 18, 18, new Color(14, 56, 125));
-    private static final Icon FLAG_ICON_DARK = loadSvgIcon("flag.svg", 18, 18, new Color(255, 78, 102));
-    private static final Icon FLAG_ICON_LIGHT = loadSvgIcon("flag.svg", 18, 18, new Color(216, 33, 70));
+    private static final String TILE_CARD_LETTER_KEY = "tileCardLetter";
+    private static final Color BOMB_DARK_COLOR = new Color(255, 255, 255);
+    private static final Color BOMB_LIGHT_COLOR = new Color(14, 56, 125);
+    private static final Color FLAG_COLOR = new Color(255, 0, 0);
 
     private final JButton backButton;
     private final JButton restartButton;
@@ -60,6 +84,9 @@ public final class GamePanel extends JPanel {
     private final JPanel hudPanel;
     private final SquareBoardHost boardHost;
     private final JPanel boardSurface;
+    private final Map<Integer, Icon> bombDarkIconCache = new HashMap<>();
+    private final Map<Integer, Icon> bombLightIconCache = new HashMap<>();
+    private final Map<Integer, Icon> flagIconCache = new HashMap<>();
     private JButton[][] tileButtons;
     private Font tileBaseFont;
     private ThemeMode themeMode = ThemeMode.DARK;
@@ -151,8 +178,8 @@ public final class GamePanel extends JPanel {
 
         Graphics2D g2d = (Graphics2D) graphics.create();
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        Color topColor = themeMode == ThemeMode.DARK ? PANEL_TOP_COLOR : new Color(232, 241, 255);
-        Color bottomColor = themeMode == ThemeMode.DARK ? PANEL_BOTTOM_COLOR : new Color(209, 224, 247);
+        Color topColor = themeMode == ThemeMode.DARK ? PANEL_TOP_COLOR : LIGHT_PANEL_TOP_COLOR;
+        Color bottomColor = themeMode == ThemeMode.DARK ? PANEL_BOTTOM_COLOR : LIGHT_PANEL_BOTTOM_COLOR;
         g2d.setPaint(new GradientPaint(0, 0, topColor, 0, getHeight(), bottomColor));
         g2d.fillRect(0, 0, getWidth(), getHeight());
         g2d.dispose();
@@ -181,17 +208,15 @@ public final class GamePanel extends JPanel {
             restartButton.setForeground(TEXT_COLOR);
             restartButton.setBackground(BUTTON_COLOR);
         } else {
-            Color lightText = new Color(20, 44, 92);
-            Color lightButtonColor = new Color(185, 208, 242);
-            titleLabel.setForeground(lightText);
-            statusLabel.setForeground(new Color(43, 79, 148));
-            flagCountLabel.setForeground(lightText);
-            timerLabel.setForeground(lightText);
-            backButton.setForeground(lightText);
-            backButton.setBackground(lightButtonColor);
-            backButton.setIcon(new ArrowLeftIcon(lightText));
-            restartButton.setForeground(lightText);
-            restartButton.setBackground(lightButtonColor);
+            titleLabel.setForeground(LIGHT_PRIMARY_TEXT);
+            statusLabel.setForeground(LIGHT_STATUS_TEXT);
+            flagCountLabel.setForeground(LIGHT_PRIMARY_TEXT);
+            timerLabel.setForeground(LIGHT_PRIMARY_TEXT);
+            backButton.setForeground(LIGHT_PRIMARY_TEXT);
+            backButton.setBackground(LIGHT_BUTTON_COLOR);
+            backButton.setIcon(new ArrowLeftIcon(LIGHT_PRIMARY_TEXT));
+            restartButton.setForeground(LIGHT_PRIMARY_TEXT);
+            restartButton.setBackground(LIGHT_BUTTON_COLOR);
         }
 
         boardSurface.setBackground(getBoardSurfaceColor());
@@ -231,7 +256,7 @@ public final class GamePanel extends JPanel {
         boardSurface.setLayout(new GridLayout(rowCount, columnCount, 6, 6));
         tileButtons = new JButton[rowCount][columnCount];
 
-        int tileFontSize = rowCount >= 12 ? 14 : 16;
+        int tileFontSize = rowCount >= 12 ? 16 : 20;
         tileBaseFont = new Font("Dialog", Font.BOLD, tileFontSize);
 
         for (int row = 0; row < rowCount; row++) {
@@ -294,6 +319,26 @@ public final class GamePanel extends JPanel {
         styleTileMine(tileButton, detonated);
         tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.MINE);
         tileButton.putClientProperty(TILE_DETONATED_KEY, detonated);
+    }
+
+    public void setTileCardHidden(int row, int column, boolean enabled) {
+        JButton tileButton = tileButtons[row][column];
+        styleTileCardHidden(tileButton, enabled);
+        tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.CARD_HIDDEN);
+        tileButton.putClientProperty(TILE_ENABLED_KEY, enabled);
+    }
+
+    public void setTileCardFace(int row, int column, char letter, boolean matched) {
+        JButton tileButton = tileButtons[row][column];
+        styleTileCardFace(tileButton, letter, matched);
+        tileButton.putClientProperty(TILE_STATE_KEY, matched ? TileVisualState.CARD_MATCHED : TileVisualState.CARD_REVEALED);
+        tileButton.putClientProperty(TILE_CARD_LETTER_KEY, letter);
+    }
+
+    public void setTileCardDiscovered(int row, int column) {
+        JButton tileButton = tileButtons[row][column];
+        styleTileCardDiscovered(tileButton);
+        tileButton.putClientProperty(TILE_STATE_KEY, TileVisualState.CARD_DISCOVERED);
     }
 
     public void requestBoardFocus() {
@@ -382,6 +427,16 @@ public final class GamePanel extends JPanel {
                         boolean detonated = Boolean.TRUE.equals(tileButton.getClientProperty(TILE_DETONATED_KEY));
                         styleTileMine(tileButton, detonated);
                     }
+                    case CARD_HIDDEN -> {
+                        boolean enabled = Boolean.TRUE.equals(tileButton.getClientProperty(TILE_ENABLED_KEY));
+                        styleTileCardHidden(tileButton, enabled);
+                    }
+                    case CARD_DISCOVERED -> styleTileCardDiscovered(tileButton);
+                    case CARD_REVEALED, CARD_MATCHED -> {
+                        Object letterValue = tileButton.getClientProperty(TILE_CARD_LETTER_KEY);
+                        char letter = letterValue instanceof Character ? (Character) letterValue : '?';
+                        styleTileCardFace(tileButton, letter, tileVisualState == TileVisualState.CARD_MATCHED);
+                    }
                 }
             }
         }
@@ -391,21 +446,21 @@ public final class GamePanel extends JPanel {
         tileButton.setText("");
         tileButton.setIcon(null);
         tileButton.setEnabled(enabled);
-        tileButton.setFont(tileBaseFont);
-        tileButton.setForeground(themeMode == ThemeMode.DARK ? TEXT_COLOR : new Color(18, 49, 107));
-        tileButton.setBackground(themeMode == ThemeMode.DARK ? HIDDEN_TILE_COLOR : new Color(137, 181, 238));
-        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? TILE_BORDER_COLOR : new Color(82, 135, 207), 1));
+        tileButton.setFont(getTileFontForButton(tileButton, 0));
+        tileButton.setForeground(themeMode == ThemeMode.DARK ? TEXT_COLOR : LIGHT_PRIMARY_TEXT);
+        tileButton.setBackground(themeMode == ThemeMode.DARK ? HIDDEN_TILE_COLOR : LIGHT_HIDDEN_TILE_COLOR);
+        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? TILE_BORDER_COLOR : LIGHT_HIDDEN_TILE_BORDER_COLOR, 1));
     }
 
     private void styleTileFlagged(JButton tileButton) {
-        Icon flagIcon = getFlagIconForTheme();
+        Icon flagIcon = getFlagIconForTheme(tileButton);
         tileButton.setText(flagIcon == null ? "F" : "");
         tileButton.setIcon(flagIcon);
         tileButton.setEnabled(true);
-        tileButton.setFont(tileBaseFont);
+        tileButton.setFont(getTileFontForButton(tileButton, 0));
         tileButton.setForeground(themeMode == ThemeMode.DARK ? new Color(255, 236, 236) : new Color(170, 34, 56));
-        tileButton.setBackground(themeMode == ThemeMode.DARK ? new Color(52, 77, 122) : new Color(170, 201, 242));
-        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? new Color(124, 151, 205) : new Color(97, 143, 212), 1));
+        tileButton.setBackground(themeMode == ThemeMode.DARK ? new Color(52, 77, 122) : LIGHT_FLAG_TILE_COLOR);
+        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? new Color(124, 151, 205) : LIGHT_FLAG_TILE_BORDER_COLOR, 1));
     }
 
     private void styleTileRevealed(JButton tileButton, int adjacentMineCount) {
@@ -414,63 +469,133 @@ public final class GamePanel extends JPanel {
         tileButton.setIcon(null);
         tileButton.setEnabled(true);
         tileButton.setForeground(numberColor);
-        tileButton.setBackground(themeMode == ThemeMode.DARK ? REVEALED_TILE_COLOR : new Color(230, 241, 255));
-        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? new Color(188, 201, 224) : new Color(140, 179, 231), 1));
-
-        int emphasizedSize = Math.max(tileBaseFont.getSize() + 2, 16);
-        tileButton.setFont(tileBaseFont.deriveFont(Font.BOLD, emphasizedSize));
+        tileButton.setBackground(themeMode == ThemeMode.DARK ? REVEALED_TILE_COLOR : LIGHT_REVEALED_TILE_COLOR);
+        tileButton.setBorder(BorderFactory.createLineBorder(themeMode == ThemeMode.DARK ? new Color(188, 201, 224) : LIGHT_REVEALED_TILE_BORDER_COLOR, 1));
+        tileButton.setFont(getTileFontForButton(tileButton, 2));
     }
 
     private void styleTileMine(JButton tileButton, boolean detonated) {
-        Icon bombIcon = getBombIconForTheme();
+        Icon bombIcon = getBombIconForTheme(tileButton);
         tileButton.setText(bombIcon == null ? "*" : "");
         tileButton.setIcon(bombIcon);
         tileButton.setEnabled(true);
-        tileButton.setFont(tileBaseFont);
+        tileButton.setFont(getTileFontForButton(tileButton, 0));
         tileButton.setForeground(Color.WHITE);
 
         if (themeMode == ThemeMode.DARK) {
             tileButton.setBackground(detonated ? MINE_TILE_COLOR : new Color(142, 40, 40));
             tileButton.setBorder(BorderFactory.createLineBorder(new Color(115, 28, 28), 1));
         } else {
-            tileButton.setBackground(detonated ? new Color(212, 93, 93) : new Color(190, 106, 106));
-            tileButton.setBorder(BorderFactory.createLineBorder(new Color(156, 79, 79), 1));
+            tileButton.setBackground(detonated ? LIGHT_MINE_TILE_COLOR : LIGHT_MINE_TILE_SAFE_COLOR);
+            tileButton.setBorder(BorderFactory.createLineBorder(LIGHT_MINE_TILE_BORDER_COLOR, 1));
+        }
+    }
+
+    private void styleTileCardHidden(JButton tileButton, boolean enabled) {
+        styleTileHidden(tileButton, enabled);
+    }
+
+    private void styleTileCardDiscovered(JButton tileButton) {
+        tileButton.setText("X");
+        tileButton.setIcon(null);
+        tileButton.setEnabled(true);
+        tileButton.setFont(getTileFontForButton(tileButton, 2));
+
+        if (themeMode == ThemeMode.DARK) {
+            tileButton.setForeground(new Color(120, 140, 176));
+            tileButton.setBackground(REVEALED_TILE_COLOR);
+            tileButton.setBorder(BorderFactory.createLineBorder(new Color(188, 201, 224), 1));
+        } else {
+            tileButton.setForeground(new Color(89, 117, 161));
+            tileButton.setBackground(LIGHT_REVEALED_TILE_COLOR);
+            tileButton.setBorder(BorderFactory.createLineBorder(LIGHT_REVEALED_TILE_BORDER_COLOR, 1));
+        }
+    }
+
+    private void styleTileCardFace(JButton tileButton, char letter, boolean matched) {
+        tileButton.setText(String.valueOf(letter));
+        tileButton.setIcon(null);
+        tileButton.setEnabled(true);
+        tileButton.setFont(getTileFontForButton(tileButton, 3));
+
+        if (themeMode == ThemeMode.DARK) {
+            tileButton.setForeground(new Color(224, 255, 224));
+            tileButton.setBackground(matched ? new Color(186, 154, 52) : new Color(58, 116, 73));
+            tileButton.setBorder(BorderFactory.createLineBorder(matched ? new Color(235, 211, 122) : new Color(110, 182, 126), 1));
+        } else {
+            tileButton.setForeground(new Color(22, 88, 45));
+            tileButton.setBackground(matched ? new Color(255, 236, 163) : new Color(166, 224, 180));
+            tileButton.setBorder(BorderFactory.createLineBorder(matched ? new Color(212, 185, 92) : new Color(91, 170, 111), 1));
         }
     }
 
     private Color getBoardSurfaceColor() {
-        return themeMode == ThemeMode.DARK ? BOARD_SURFACE_COLOR : new Color(174, 206, 245);
+        return themeMode == ThemeMode.DARK ? BOARD_SURFACE_COLOR : LIGHT_BOARD_SURFACE_COLOR;
     }
 
     private Color getBoardFrameColor() {
-        return themeMode == ThemeMode.DARK ? new Color(90, 119, 171) : new Color(95, 142, 205);
+        return themeMode == ThemeMode.DARK ? new Color(90, 119, 171) : LIGHT_BOARD_FRAME_COLOR;
     }
 
     private Color getHudBackgroundColor() {
-        return themeMode == ThemeMode.DARK ? HUD_PANEL_COLOR : new Color(186, 214, 248);
+        return themeMode == ThemeMode.DARK ? HUD_PANEL_COLOR : LIGHT_HUD_PANEL_COLOR;
     }
 
     private Color getHudFrameColor() {
-        return themeMode == ThemeMode.DARK ? new Color(84, 114, 166) : new Color(89, 140, 207);
+        return themeMode == ThemeMode.DARK ? new Color(84, 114, 166) : LIGHT_HUD_FRAME_COLOR;
     }
 
-    private Icon getFlagIconForTheme() {
-        return themeMode == ThemeMode.DARK ? FLAG_ICON_DARK : FLAG_ICON_LIGHT;
+    private Icon getFlagIconForTheme(JButton tileButton) {
+        int size = resolveIconSize(tileButton, 0.72, 16, 30);
+        return flagIconCache.computeIfAbsent(size, key -> loadSvgIcon("triangle-flag.svg", key, key, FLAG_COLOR));
     }
 
-    private Icon getBombIconForTheme() {
-        return themeMode == ThemeMode.DARK ? BOMB_ICON_DARK : BOMB_ICON_LIGHT;
+    private Icon getBombIconForTheme(JButton tileButton) {
+        int size = resolveIconSize(tileButton, 0.62, 14, 26);
+        if (themeMode == ThemeMode.DARK) {
+            return bombDarkIconCache.computeIfAbsent(size, key -> loadBombIcon(BOMB_DARK_COLOR, key));
+        }
+        return bombLightIconCache.computeIfAbsent(size, key -> loadBombIcon(BOMB_LIGHT_COLOR, key));
+    }
+
+    private int resolveIconSize(JButton tileButton, double scaleFactor, int minSize, int maxSize) {
+        int side = Math.min(tileButton.getWidth(), tileButton.getHeight());
+        if (side <= 0) {
+            side = tileButton.getPreferredSize().width;
+        }
+
+        int scaled = (int) Math.round(side * scaleFactor);
+        return Math.max(minSize, Math.min(maxSize, scaled));
+    }
+
+    private Font getTileFontForButton(JButton tileButton, int boost) {
+        int side = Math.min(tileButton.getWidth(), tileButton.getHeight());
+        int computedBaseSize;
+
+        if (side > 0) {
+            computedBaseSize = (int) Math.round(side * 0.46);
+            computedBaseSize = Math.max(14, Math.min(24, computedBaseSize));
+        } else {
+            computedBaseSize = tileBaseFont == null ? 16 : tileBaseFont.getSize();
+        }
+
+        int finalSize = Math.max(14, computedBaseSize + boost);
+        return tileBaseFont.deriveFont(Font.BOLD, (float) finalSize);
+    }
+
+    private static Icon loadBombIcon(Color color, int iconSize) {
+        Icon svgIcon = loadSvgIcon("bomba.svg", iconSize, iconSize, color);
+        return svgIcon != null ? svgIcon : new BombFallbackIcon(iconSize, iconSize, color);
     }
 
     private static Icon loadSvgIcon(String assetFileName, int iconWidth, int iconHeight, Color color) {
-        Path svgPath = Path.of("assets", assetFileName);
-        if (!Files.exists(svgPath)) {
-            return null;
-        }
-
         try {
-            String svg = Files.readString(svgPath, StandardCharsets.UTF_8);
-            Matcher pathMatcher = Pattern.compile("d=\"([^\"]+)\"").matcher(svg);
+            String svg = readAssetText(assetFileName);
+            if (svg == null) {
+                return null;
+            }
+
+            Matcher pathMatcher = Pattern.compile("<path[^>]*\\bd\\s*=\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(svg);
             Matcher viewBoxMatcher = Pattern.compile("viewBox=\"([^\"]+)\"").matcher(svg);
             if (!pathMatcher.find() || !viewBoxMatcher.find()) {
                 return null;
@@ -491,6 +616,64 @@ public final class GamePanel extends JPanel {
         } catch (IOException | IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    private static String readAssetText(String assetFileName) throws IOException {
+        try (InputStream stream = openAssetStream(assetFileName)) {
+            if (stream == null) {
+                return null;
+            }
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static InputStream openAssetStream(String assetFileName) throws IOException {
+        Path relativeAssetPath = Path.of("assets", assetFileName);
+        if (Files.exists(relativeAssetPath)) {
+            return Files.newInputStream(relativeAssetPath);
+        }
+
+        Path userDirPath = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
+        Path fromUserDir = findAssetFromBase(userDirPath, assetFileName);
+        if (fromUserDir != null) {
+            return Files.newInputStream(fromUserDir);
+        }
+
+        URL codeSourceUrl = GamePanel.class.getProtectionDomain().getCodeSource() == null
+                ? null
+                : GamePanel.class.getProtectionDomain().getCodeSource().getLocation();
+        if (codeSourceUrl != null) {
+            try {
+                Path codeSourcePath = Path.of(codeSourceUrl.toURI()).toAbsolutePath().normalize();
+                Path classBasePath = Files.isDirectory(codeSourcePath) ? codeSourcePath : codeSourcePath.getParent();
+                Path fromClassBase = findAssetFromBase(classBasePath, assetFileName);
+                if (fromClassBase != null) {
+                    return Files.newInputStream(fromClassBase);
+                }
+            } catch (URISyntaxException ignored) {
+                // Fall through to classpath lookup below.
+            }
+        }
+
+        ClassLoader classLoader = GamePanel.class.getClassLoader();
+        InputStream classpathAsset = classLoader.getResourceAsStream("assets/" + assetFileName);
+        if (classpathAsset != null) {
+            return classpathAsset;
+        }
+
+        return classLoader.getResourceAsStream(assetFileName);
+    }
+
+    private static Path findAssetFromBase(Path basePath, String assetFileName) {
+        Path currentPath = basePath;
+        while (currentPath != null) {
+            Path candidate = currentPath.resolve("assets").resolve(assetFileName);
+            if (Files.exists(candidate)) {
+                return candidate;
+            }
+            currentPath = currentPath.getParent();
+        }
+        return null;
     }
 
     private static final class ModernBackButton extends JButton {
@@ -579,7 +762,11 @@ public final class GamePanel extends JPanel {
         HIDDEN,
         FLAGGED,
         REVEALED,
-        MINE
+        MINE,
+        CARD_HIDDEN,
+        CARD_DISCOVERED,
+        CARD_REVEALED,
+        CARD_MATCHED
     }
 
     private static final class ArrowLeftIcon implements Icon {
@@ -671,6 +858,46 @@ public final class GamePanel extends JPanel {
         }
     }
 
+    private static final class BombFallbackIcon implements Icon {
+        private final int iconWidth;
+        private final int iconHeight;
+        private final Color color;
+
+        BombFallbackIcon(int iconWidth, int iconHeight, Color color) {
+            this.iconWidth = iconWidth;
+            this.iconHeight = iconHeight;
+            this.color = color;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g2d = (Graphics2D) graphics.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(color);
+
+            int bodySize = Math.min(iconWidth, iconHeight) - 6;
+            int bodyX = x + 2;
+            int bodyY = y + 4;
+            g2d.fillOval(bodyX, bodyY, bodySize, bodySize);
+
+            g2d.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2d.drawLine(bodyX + bodySize - 2, bodyY + 2, x + iconWidth - 2, y + 2);
+            g2d.fillOval(x + iconWidth - 4, y, 3, 3);
+
+            g2d.dispose();
+        }
+
+        @Override
+        public int getIconWidth() {
+            return iconWidth;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return iconHeight;
+        }
+    }
+
     private static final class SvgPathParser {
         private final String pathData;
         private int index;
@@ -712,6 +939,7 @@ public final class GamePanel extends JPanel {
                     case 'L', 'l' -> parseLine(path, command == 'l');
                     case 'H', 'h' -> parseHorizontal(path, command == 'h');
                     case 'V', 'v' -> parseVertical(path, command == 'v');
+                    case 'C', 'c' -> parseCubic(path, command == 'c');
                     case 'Q', 'q' -> parseQuadratic(path, command == 'q');
                     case 'T', 't' -> parseSmoothQuadratic(path, command == 't');
                     case 'Z', 'z' -> {
@@ -797,6 +1025,32 @@ public final class GamePanel extends JPanel {
                 path.quadTo(controlX, controlY, endX, endY);
                 lastControlX = controlX;
                 lastControlY = controlY;
+                currentX = endX;
+                currentY = endY;
+            }
+        }
+
+        private void parseCubic(Path2D.Double path, boolean relative) {
+            while (hasNumberAhead()) {
+                double control1X = nextNumber();
+                double control1Y = nextNumber();
+                double control2X = nextNumber();
+                double control2Y = nextNumber();
+                double endX = nextNumber();
+                double endY = nextNumber();
+
+                if (relative) {
+                    control1X += currentX;
+                    control1Y += currentY;
+                    control2X += currentX;
+                    control2Y += currentY;
+                    endX += currentX;
+                    endY += currentY;
+                }
+
+                path.curveTo(control1X, control1Y, control2X, control2Y, endX, endY);
+                lastControlX = control2X;
+                lastControlY = control2Y;
                 currentX = endX;
                 currentY = endY;
             }
